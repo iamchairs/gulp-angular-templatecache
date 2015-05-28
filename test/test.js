@@ -252,18 +252,19 @@ describe('gulp-angular-templatecache', function () {
 
   });
 
-  describe('options.templateHeader & options.templateFooter', function () {
+  describe('options.templateHeader & options.templateFooter & options.templateBody', function () {
 
     it('should override TEMPLATE_HEADER & TEMPLATE_FOOTER', function (cb) {
       var stream = templateCache('templates.js', {
         templateHeader: 'var template = "',
-        templateFooter: '";'
+        templateFooter: '";',
+        templateBody: '<%= fileName %>'
       });
 
       stream.on('data', function (file) {
         assert.equal(file.path, path.normalize(__dirname + '/templates.js'));
         assert.equal(file.relative, 'templates.js');
-        assert.equal(file.contents.toString('utf8'), 'var template = "$templateCache.put("/template-a.html","yoo");";');
+        assert.equal(file.contents.toString('utf8'), 'var template = "template-a.html";');
         cb();
       });
 

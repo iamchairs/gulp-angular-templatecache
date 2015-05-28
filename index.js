@@ -11,6 +11,7 @@ var htmlJsStr = require('js-string-escape');
  */
 
 var TEMPLATE_HEADER = 'angular.module("<%= module %>"<%= standalone %>).run(["$templateCache", function($templateCache) {';
+var TEMPLATE_BODY = '$templateCache.put("<%= url %>","<%= contents %>");';
 var TEMPLATE_FOOTER = '}]);';
 var DEFAULT_FILENAME = 'templates.js';
 var DEFAULT_MODULE = 'templates';
@@ -36,15 +37,16 @@ var MODULE_TEMPLATES = {
  * Add files to templateCache.
  */
 
-function templateCacheFiles(root, base) {
+function templateCacheFiles(root, base, templateBody) {
 
   return function templateCacheFile(file, callback) {
     if (file.processedByTemplateCache) {
       return callback(null, file);
     }
 
-    var template = '$templateCache.put("<%= url %>","<%= contents %>");';
+    var template = templateBody || TEMPLATE_BODY;
     var url;
+    var fileName;
 
     file.path = path.normalize(file.path);
 
@@ -57,6 +59,12 @@ function templateCacheFiles(root, base) {
     } else {
       url = path.join(root, file.path.replace(base || file.base, ''));
     }
+
+    /**
+     * Get File Name
+     */
+
+    fileName = url.split('/').pop();
 
     /**
      * Normalize url (win only)
@@ -72,6 +80,7 @@ function templateCacheFiles(root, base) {
 
     file.contents = new Buffer(gutil.template(template, {
       url: url,
+      fileName: fileName,
       contents: htmlJsStr(file.contents),
       file: file
     }));
@@ -88,7 +97,7 @@ function templateCacheFiles(root, base) {
  * templateCache a stream of files.
  */
 
-function templateCacheStream(root, base) {
+function templateCacheStream(root, base, templateBody) {
 
   /**
    * Set relative base
@@ -102,7 +111,7 @@ function templateCacheStream(root, base) {
    * templateCache files
    */
 
-  return es.map(templateCacheFiles(root, base));
+  return es.map(templateCacheFiles(root, base, templateBody));
 
 }
 
@@ -159,13 +168,12 @@ function templateCache(filename, options) {
   var templateHeader = options.templateHeader || TEMPLATE_HEADER;
   var templateFooter = options.templateFooter || TEMPLATE_FOOTER;
 
-
   /**
    * Build templateCache
    */
 
   return es.pipeline(
-    templateCacheStream(options.root || '', options.base),
+    templateCacheStream(options.root || '', options.base, options.templateBody),
     concat(filename),
     header(templateHeader, {
       module: options.module || DEFAULT_MODULE,
